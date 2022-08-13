@@ -49,9 +49,8 @@ if __name__ == "__main__":
     try:
         t.start()
         while True:
-            
             packet = os.read(tun.fileno(), 2048)
-            print(packet.decode())
+            print(packet)
 
             
 
