@@ -4,7 +4,7 @@ ema-instance" xsi:schemaLocation="https://cdds.io/config https://raw.githubuserc
 ent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd">
     <Domain id="any">
         <General>
-            <NetworkInterfaceAddress>test_tap</NetworkInterfaceAddress>
+            <NetworkInterfaceAddress>tunros</NetworkInterfaceAddress>
             <AllowMulticast>false</AllowMulticast>
         </General>
         <Discovery>
