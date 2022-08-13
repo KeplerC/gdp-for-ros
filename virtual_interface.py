@@ -1,14 +1,16 @@
 #from scapy.layers.tuntap import TunTapInterface
+'''
 import scapy.all as scapy
 from time import sleep 
 
-'''
+# method 1 is to use scapy directly
 t = scapy.TunTapInterface('tun0')  
 while(True):
     print(t.recv_raw())
 
 '''
 
+# method 2 is to write on raw sockets 
 import fcntl
 import struct
 import os
@@ -37,8 +39,7 @@ def recv():
 
 if __name__ == "__main__":
 
-    dst = "127.1.1.1"
-    print ("Working on tunros inteface, destination address %s:40000 udp" % ( dst))
+    print ("Working on tunros inteface")
     tun = open('/dev/net/tun', 'r+b', buffering = 0)
     ifr = struct.pack('16sH', b'tunros', IFF_TUN | IFF_NO_PI)
     fcntl.ioctl(tun, TUNSETIFF, ifr)
@@ -48,8 +49,10 @@ if __name__ == "__main__":
     try:
         t.start()
         while True:
-            udp_send(dst, packet)
+            
             packet = os.read(tun.fileno(), 2048)
+            print(packet.decode())
+
             
 
     except KeyboardInterrupt:
