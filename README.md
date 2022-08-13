@@ -11,17 +11,20 @@ sudo python3 virtual_interface.py (the processing logic)
 # setup the interface 
 sudo ip link set tunros up
 # dummy to trick ros to think it's an interface
-sudo ip addr add 192.0.2.1 peer 192.0.2.2 dev tunros 
+sudo ip addr add 10.0.0.1 peer 10.0.0.1 dev tunros 
 ```
 
 Step 2: run ROS
-```
-# first export the path of ROS 
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp && export CYCLONEDDS_URI=file://`pwd`/cyclonedds.xml
 
-# publisher
+Start two terminals. 
+
+```
+# publisher 
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp && export CYCLONEDDS_URI=file://`pwd`/cyclonedds.xml
 ros2 run demo_nodes_cpp talker
+
 # subscriber
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp && export CYCLONEDDS_URI=file://`pwd`/cyclonedds.xml
 ros2 run demo_nodes_cpp listener
 ```
 
