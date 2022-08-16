@@ -18,4 +18,7 @@ colcon build
 Step 3: Run
 (TODO)
 ```
+ros2 run gdp_proxy_for_ros talker
+ros2 run gdp_proxy_for_ros listener
+ros2 run gdp_proxy_for_ros proxy
 ```

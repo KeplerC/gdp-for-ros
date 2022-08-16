@@ -1,24 +1,37 @@
+import rclpy
+from rclpy.node import Node
 
-#!/usr/bin/env python
-import rospy
 from std_msgs.msg import String
 
-def callback(data):
-    rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
-    
-def listener():
 
-    # In ROS, nodes are uniquely named. If two nodes with the same
-    # name are launched, the previous one is kicked off. The
-    # anonymous=True flag means that rospy will choose a unique
-    # name for our 'listener' node so that multiple listeners can
-    # run simultaneously.
-    rospy.init_node('listener', anonymous=True)
+class MinimalSubscriber(Node):
 
-    rospy.Subscriber("chatter", String, callback)
+    def __init__(self):
+        super().__init__('minimal_subscriber')
+        self.subscription = self.create_subscription(
+            String,
+            'topic',
+            self.listener_callback,
+            10)
+        self.subscription  # prevent unused variable warning
 
-    # spin() simply keeps python from exiting until this node is stopped
-    rospy.spin()
+    def listener_callback(self, msg):
+        self.get_logger().info('I heard: "%s"' % msg.data)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    minimal_subscriber = MinimalSubscriber()
+
+    rclpy.spin(minimal_subscriber)
+
+    # Destroy the node explicitly
+    # (optional - otherwise it will be done automatically
+    # when the garbage collector destroys the node object)
+    minimal_subscriber.destroy_node()
+    rclpy.shutdown()
+
 
 if __name__ == '__main__':
-    listener()
+    main()
