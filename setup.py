@@ -20,8 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'talker = gdp_proxy_for_ros.talker:main'
-            'listener = gdp_proxy_for_ros.listener:main'
+            'talker = gdp_proxy_for_ros.talker:main',
+            'listener = gdp_proxy_for_ros.listener:main',
             'proxy = gdp_proxy_for_ros.proxy:main'
         ],
     },
