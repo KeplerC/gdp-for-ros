@@ -8,6 +8,8 @@ from pydispatch import dispatcher
 import zmq
 from threading import Thread
 
+zmq_sending_port = "5559"
+zmq_recv_port = "5560"
 
 class GDP_Client():
     def __init__(self, gdp_proxy):
@@ -16,9 +18,8 @@ class GDP_Client():
         self.gdp_proxy = gdp_proxy
         
         self.context = zmq.Context()
-        print ("Connecting to server...")
         self.socket = self.context.socket(zmq.PUB)
-        #  Get the reply.
+        #  Get the reply thread
         thread = Thread(target = self.receive, args = ())
         thread.start()
         
@@ -84,18 +85,16 @@ class GDP_Client():
             del self._subscribers[topic_name]
 
     def send(self, message):
-        port = "5559"
-        self.socket.connect ("tcp://localhost:%s" % port)
+        self.socket.connect ("tcp://localhost:%s" % zmq_sending_port)
         print ("Send: " + message)
         self.socket.send (("%s %s" % ("", message)).encode('utf-8'))
 
         
     def receive(self):
-        port = "5560"
         # Socket to talk to server
         context = zmq.Context()
         socket = context.socket(zmq.SUB)
-        socket.connect ("tcp://localhost:%s" % port)
+        socket.connect ("tcp://localhost:%s" % zmq_recv_port)
         topicfilter = b""
         socket.setsockopt(zmq.SUBSCRIBE, topicfilter)
         while True:
@@ -105,6 +104,9 @@ class GDP_Client():
             if (data.get("op") == "subscribe"):
                 print("Attempt to subscribe to a local topic")
                 self.gdp_proxy.create_new_local_topic(data.get("topic"), data.get("type"))
+            if data.get("op") == "publish":
+                dispatcher.send(signal=data.get('topic'), message=data.get('msg'))
+                
             if data.get("op") == "unsubscribe":
                 print("dynamically adding new topic not allowed")
                 pass
@@ -114,9 +116,8 @@ class GDP_Client():
             if data.get("op") == "unadvertise":
                 print("dynamically adding new topic not allowed")
                 pass
-            if data.get("op") == "publish":
-                dispatcher.send(signal=data.get('topic'), message=data.get('msg'))
             if data.get("op") == "unadvertise":
+                print("dynamically unsubscribing new topic not allowed")
                 pass            
 
 
@@ -204,7 +205,7 @@ class GDP_Proxy(Node):
         super().__init__('gdp_proxy')
 
         # topics
-        self.remote_topics =[]  # [["chatter", 'std_msgs/String']]
+        self.remote_topics =[["topic", 'std_msgs/String']]
         self.local_topics = [["topic", 'std_msgs/String']]
         self.rate_hz = 1
         self.check_if_msgs_are_installed()
@@ -216,7 +217,7 @@ class GDP_Proxy(Node):
         self.client = GDP_Client(self)
         
         # connect the topics 
-        self._instances = {'topics': [], 'services': []}
+        self._instances = {'topics': []}
         for rt in self.remote_topics:
             if len(rt) == 2:
                 topic_name, topic_type = rt
@@ -239,26 +240,20 @@ class GDP_Proxy(Node):
             local_name = topic_name
         print("create new remote topic to expose locally: ", topic_name, " ", topic_type)
 
-        class RemoteNode(Node):
-             def __init__(self):
-                super().__init__('gdp_publisher_' +topic_name)
-                self.publisher_ = self.create_publisher(get_ROS_class(topic_type)
-                                        , local_name, 10)
-
-        remote_node = RemoteNode()
+        rospub = self.create_publisher(get_ROS_class(topic_type), "gdp/" + local_name, 10)
 
         cb_r_to_l = self.create_callback_from_remote_to_local(topic_name,
                                                                   topic_type,
-                                                                  remote_node.publisher_)
-        subl = self.create_subscribe_listener(topic_name,
-                                                  topic_type,
-                                                  cb_r_to_l)
-        rospub.impl.add_subscriber_listener(subl)
+                                                                  rospub)
+        bridgesub = self.client.subscriber(
+                                topic_name,
+                                topic_type,
+                                cb_r_to_l)
 
         self._instances['topics'].append(
                 {topic_name:
                  {'rospub': rospub,
-                  'bridgesub': None}
+                  'bridgesub': bridgesub}
                  })
         
     # Topics being published locally to expose remotely
@@ -300,7 +295,21 @@ class GDP_Proxy(Node):
             dict_msg = from_ROS_to_dict(message)
             bridgepub.publish(dict_msg)
         return callback_local_to_remote
-        
+    
+    def create_callback_from_remote_to_local(self, topic_name,
+                                             topic_type,
+                                             rospub):
+        # Note: argument MUST be named 'message' as
+        # that's the keyword given to pydispatch
+        def callback_remote_to_local(message):
+            print("Remote ROSBridge subscriber from topic " +
+                           topic_name + ' of type ' +
+                           topic_type + ' got data: ' + str(message) +
+                           ' which is republished locally.')
+            msg = from_dict_to_ROS(message, topic_type)
+            rospub.publish(msg)
+        return callback_remote_to_local
+
     def spin(self):
         r = rospy.Rate(self.rate_hz)
         while not rospy.is_shutdown():

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# from roslib.message import fill_message_args
+from .rospy_message_converter import *
 from pydoc import locate
 import json
 import yaml
@@ -100,7 +100,7 @@ def from_ROS_to_dict(ros_msg):
     """
     # Note that this may be very slow for big data structures like
     # an sensor_msgs/Image
-    return yaml.load(ros_msg.__str__())
+    return convert_ros_message_to_dictionary(ros_msg)
 
 
 def from_dict_to_ROS(dict_msg, ros_message_type, srv=False):
@@ -110,12 +110,10 @@ def from_dict_to_ROS(dict_msg, ros_message_type, srv=False):
     """
     msg_class = get_ROS_class(ros_message_type, srv=srv)
     msg_instance = msg_class()
-    # Workaround
-    if len(dict_msg) == 1:
-        dict_msg = [dict_msg]
-    # fill_message_args(msg_instance, dict_msg)
-    # TODO: how?? 
-    return msg_instance
+
+    return convert_dictionary_to_ros_message(
+                message_type = get_ROS_class(ros_message_type), 
+                dictionary = dict_msg)
 
 
 def from_JSON_to_ROS(json_msg, ros_message_type, srv=False):
