@@ -173,15 +173,15 @@ class _Publisher(object):
 
 
 class _Subscriber(object):
-    def __init__(self, rosbridge, topic_name, cb=None):
+    def __init__(self, gdpclient, topic_name, cb=None):
         """Constructor for _Subscriber.
         Args:
-            rosbridge (ROSBridgeClient): The ROSBridgeClient object.
+            gdpclient (gdpclient): The gdpclient object.
             topic_name (str): The ROS topic name.
             cb (function): A function will be called when a message is
                 received on that topic.
         """
-        self._gdp_client = rosbridge
+        self._gdp_client = gdpclient
         self._topic_name = topic_name
         self._cb = cb
         if callable(self._cb):
@@ -204,10 +204,11 @@ class GDP_Proxy(Node):
         super().__init__('gdp_proxy')
 
         # topics
-        self.remote_topics = [["chatter", 'std_msgs/String']]
-        self.local_topics = [] #[["chatter", 'std_msgs/String']]
+        self.remote_topics =[]  # [["chatter", 'std_msgs/String']]
+        self.local_topics = [["topic", 'std_msgs/String']]
         self.rate_hz = 1
         self.check_if_msgs_are_installed()
+
         self.initialize()
 
     def initialize(self):
@@ -223,6 +224,7 @@ class GDP_Proxy(Node):
             elif len(rt) == 3:
                 topic_name, topic_type, local_name = rt
             self.create_new_remote_topic(topic_name, topic_type, local_name)
+
         for lt in self.local_topics:
             if len(lt) == 2:
                 topic_name, topic_type = lt
@@ -239,14 +241,12 @@ class GDP_Proxy(Node):
 
         class RemoteNode(Node):
              def __init__(self):
-                super().__init__('minimal_publisher')
+                super().__init__('gdp_publisher_' +topic_name)
                 self.publisher_ = self.create_publisher(get_ROS_class(topic_type)
                                         , local_name, 10)
 
         remote_node = RemoteNode()
-        #rospub = Node.Publisher(local_name,
-        #                             get_ROS_class(topic_type),
-        #                             queue_size=1)
+
         cb_r_to_l = self.create_callback_from_remote_to_local(topic_name,
                                                                   topic_type,
                                                                   remote_node.publisher_)
@@ -267,35 +267,26 @@ class GDP_Proxy(Node):
             remote_name = topic_name
         print("create new local topic to expose remote: ", topic_name, " ", topic_type)
         bridgepub = self.client.publisher(remote_name, topic_type)
-        
-        cb_l_to_r = self.create_callback_from_local_to_remote(topic_name,
-                                                                  topic_type,
-                                                                  bridgepub)
 
-        rossub = Node.Subscriber(topic_name,
-                                      get_ROS_class(topic_type),
-                                      cb_l_to_r)
+        cb_l_to_r = self.create_callback_from_local_to_remote(topic_name,
+                                                            topic_type,
+                                                            bridgepub)
+
+        rossub = self.create_subscription(
+                        get_ROS_class(topic_type),
+                        topic_name,
+                        cb_l_to_r,
+                        10)
+
         self._instances['topics'].append(
                 {topic_name:
                  {'rossub': rossub,
                   'bridgepub': bridgepub}
                  })
-        
-    def create_callback_from_remote_to_local(self, topic_name,
-                                             topic_type,
-                                             rospub):
-        # Note: argument MUST be named 'message' as
-        # that's the keyword given to pydispatch
-        def callback_remote_to_local(message):
-            print("Remote ROSBridge subscriber from topic " +
-                           topic_name + ' of type ' +
-                           topic_type + ' got data: ' + str(message) +
-                           ' which is republished locally.')
-            # Only convert and publish with subscribers
-            if rospub.get_num_connections() >= 1:
-                msg = from_dict_to_ROS(message, topic_type)
-                rospub.publish(msg)
-        return callback_remote_to_local
+
+    def listener_callback(self, msg):
+        self.get_logger().info('I heard: "%s"' % msg.data)
+
 
     def create_callback_from_local_to_remote(self,
                                              topic_name,
@@ -309,47 +300,6 @@ class GDP_Proxy(Node):
             dict_msg = from_ROS_to_dict(message)
             bridgepub.publish(dict_msg)
         return callback_local_to_remote
-        
-
-    def create_subscribe_listener(self,
-                                  topic_name,
-                                  topic_type,
-                                  cb_r_to_l):
-        # We create a SubscribeListener that will
-        # create a rosbridge subscriber on demand
-        # and also unregister it if no one is listening
-        class CustomSubscribeListener(Node.SubscribeListener):
-            def __init__(this):
-                super(CustomSubscribeListener, this).__init__()
-                this.bridgesub = None
-
-            def peer_subscribe(this, tn, tp, pp):
-                # Only make a new subscriber if there wasn't one
-                if this.bridgesub is None:
-                    print(
-                        "We have a first subscriber to: " + topic_name)
-                    this.bridgesub = self.client.subscriber(
-                        topic_name,
-                        topic_type,
-                        cb_r_to_l)
-                    for idx, topic_d in enumerate(self._instances['topics']):
-                        if topic_d.get(topic_name):
-                            self._instances['topics'][idx][topic_name]['bridgesub'] = this.bridgesub
-                            break
-
-            def peer_unsubscribe(this, tn, num_peers):
-                # Unsubscribe if there isnt anyone left
-                if num_peers < 1:
-                    print(
-                        "There are no more subscribers to: " + topic_name)
-                    self.client.unsubscribe(this.bridgesub)
-                    this.bridgesub = None
-                    # May be redundant if it's actually a reference to this.bridgesub already
-                    for idx, topic_d in enumerate(self._instances['topics']):
-                        if topic_d.get(topic_name):
-                            self._instances['topics'][idx][topic_name]['bridgesub'] = None
-                            break
-        return CustomSubscribeListener()
         
     def spin(self):
         r = rospy.Rate(self.rate_hz)
