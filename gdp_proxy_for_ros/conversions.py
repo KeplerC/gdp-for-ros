@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from genpy.message import fill_message_args
+# from roslib.message import fill_message_args
 from pydoc import locate
 import json
 import yaml
@@ -113,7 +113,8 @@ def from_dict_to_ROS(dict_msg, ros_message_type, srv=False):
     # Workaround
     if len(dict_msg) == 1:
         dict_msg = [dict_msg]
-    fill_message_args(msg_instance, dict_msg)
+    # fill_message_args(msg_instance, dict_msg)
+    # TODO: how?? 
     return msg_instance
 
 

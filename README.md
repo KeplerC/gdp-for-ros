@@ -1,6 +1,11 @@
 
+### Setup Env
 
-# To run 
+```
+pip3 install PyDispatcher 
+```
+
+### To run 
 
 The repo is hosted at `gdpmobile1/fog_ws/src/`.
 
