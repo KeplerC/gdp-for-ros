@@ -17,7 +17,7 @@ ip_switch_publisher = '128.32.37.82'
 name_switch_publisher =  '149438be165c4f4d9c86dc409e268403d49c4b0cf1cc70967def8b4f18f26fd2'
 ip_switch_subscriber = '128.32.37.42'
 name_switch_subscriber= '318e58e9f2901731831efac22d3d4cb0d0da0c4ad17ca75c62e15224456387fd'
-
+talker_topic_gdp_name = '9d2291699c0e4529f752470e4462a25014ce19c16c0210b4ba5aad8868c3ba75'
 
 class GDP_Client():
     def __init__(self, gdp_proxy, switch_ip, switch_name):
@@ -75,7 +75,10 @@ class GDP_Client():
             }))
             self._subscribers[topic_name] = {}
             self._subscribers[topic_name]['subscribers'] = [subscriber]
-        #TODO: it should advertise the topic on global data plane
+
+            # register with gdp
+            connect_self_to_topic(talker_topic_gdp_name, False, self.local_ip, self.local_gdpname, self.switch_ip)
+        
         return subscriber
 
     def unsubscribe(self, subscriber):
