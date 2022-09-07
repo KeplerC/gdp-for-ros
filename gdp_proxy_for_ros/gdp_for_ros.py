@@ -5,7 +5,7 @@ from scapy.all import *
 import threading
 from .utils import *
 # from sshkeyboard import listen_keyboard
-
+from pydispatch import dispatcher
 
 
 class GDP(Packet):
@@ -63,8 +63,9 @@ class DataAssembler():
         num_packets = gdp_layer.num_packets
         series_uuid = gdp_layer.uuid.to_bytes(16, "big").hex()
 
+
         # Critical section below, using a python mutex
-        DATA_ASSEMBLER_MUTEX.acquire()
+        # DATA_ASSEMBLER_MUTEX.acquire()
 
         if series_uuid in self.series_packets.keys():
             data_list = self.series_packets[series_uuid]
@@ -82,13 +83,22 @@ class DataAssembler():
         if self.series_packets_countdown[series_uuid] == 0:
             data_list = self.series_packets[series_uuid]
             assembled_data = reduce(lambda x, y: x+y, data_list)
-            self.message_queue.put((series_uuid, hex(gdp_layer.src_gdpname), assembled_data))
+            print(assembled_data)
+            message = assembled_data.decode()
+            #self.message_queue.put((series_uuid, hex(gdp_layer.src_gdpname), assembled_data))
             self.series_packets.pop(series_uuid)
             self.series_packets_countdown.pop(series_uuid)
 
+        print("Received message: ", message)
+        message = json.loads(message).get("message")
+        data = json.loads(message)
+        if data.get("op") == "publish":
+            dispatcher.send(signal=data.get('topic'), message=data.get('msg'))
+        else:
+            print("operation not supported ", data.get("op"))    
         
         # Releasing the mutex
-        DATA_ASSEMBLER_MUTEX.release()
+        # DATA_ASSEMBLER_MUTEX.release()
 
 
 def register_proxy(local_ip, switch_ip, local_GdpName, dst_GdpName):
