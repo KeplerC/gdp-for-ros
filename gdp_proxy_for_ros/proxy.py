@@ -2,25 +2,42 @@
 
 import rclpy
 from std_msgs.msg import String
-from .conversions import *
 from rclpy.node import Node
 from pydispatch import dispatcher
-import zmq
 from threading import Thread
 
-zmq_sending_port = "5559"
-zmq_recv_port = "5560"
+from .conversions import *
+from .gdp_for_ros import *
+from .utils import * 
+
+
+# hardcode several things 
+# TODO: change it with cli args
+ip_switch_publisher = '128.32.37.82'
+name_switch_publisher =  '149438be165c4f4d9c86dc409e268403d49c4b0cf1cc70967def8b4f18f26fd2'
+ip_switch_subscriber = '128.32.37.42'
+name_switch_subscriber= '318e58e9f2901731831efac22d3d4cb0d0da0c4ad17ca75c62e15224456387fd'
+
 
 class GDP_Client():
-    def __init__(self, gdp_proxy):
+    def __init__(self, gdp_proxy, switch_ip, switch_name):
         self._publishers = {}
         self._subscribers = {}
         self.gdp_proxy = gdp_proxy
         
-        self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.PUB)
+        self.switch_ip = switch_ip 
+        self.switch_gdpname = int.from_bytes(bytes.fromhex(switch_name), "big")
+
+        # register itself with the switch
+        local_ip = get_local_ip()
+        self.local_ip = local_ip
+        local_gdpname = generate_gdpname(local_ip)
+        self.local_gdpname = local_gdpname
+        register_proxy(local_ip, switch_ip, local_gdpname, self.switch_gdpname)
+
         #  Get the reply thread
-        thread = Thread(target = self.receive, args = ())
+        self.data_assembler = DataAssembler(local_gdpname, local_ip, switch_ip)
+        thread = threading.Thread(target=start_sniffing, args=(lambda packet: self.data_assembler.process_packet(packet),))
         thread.start()
         
     def publisher(self, topic_name, message_type):
@@ -29,10 +46,10 @@ class GDP_Client():
             publisher.usage += 1
         else:
             print('Advertising topic {} for publishing'.format(topic_name))
-            publisher = _Publisher(self, topic_name, message_type)
+            publisher = _Publisher(self, topic_name, message_type, 
+                            self.local_ip, self.local_gdpname, self.switch_ip)
             self._publishers[topic_name] = publisher
 
-        #TODO: it should advertise the topic on global data plane
         return publisher
     
     def unregister_publisher(self, topic_name):
@@ -83,21 +100,21 @@ class GDP_Client():
                 'topic': topic_name
             }))
             del self._subscribers[topic_name]
-
-    def send(self, message):
-        self.socket.connect ("tcp://localhost:%s" % zmq_sending_port)
-        print ("Send: " + message)
-        self.socket.send (("%s %s" % ("", message)).encode('utf-8'))
-
         
+    def send(self, message):
+        print("generic send not implemented")
+        print("message to be sent: " + message)
+
     def receive(self):
         # Socket to talk to server
-        context = zmq.Context()
-        socket = context.socket(zmq.SUB)
-        socket.connect ("tcp://localhost:%s" % zmq_recv_port)
-        topicfilter = b""
-        socket.setsockopt(zmq.SUBSCRIBE, topicfilter)
+        # context = zmq.Context()
+        # socket = context.socket(zmq.SUB)
+        # socket.connect ("tcp://localhost:%s" % zmq_recv_port)
+        # topicfilter = b""
+        # socket.setsockopt(zmq.SUBSCRIBE, topicfilter)
         while True:
+            uid_and_message = self.data_assembler.message_queue.get()
+            print(uuid_and_message, flush=True)
             message = socket.recv().decode()
             print("Received message: ", message)
             data = json.loads(message)
@@ -122,7 +139,8 @@ class GDP_Client():
 
 
 class _Publisher(object):
-    def __init__(self, gdp_client, topic_name, message_type):
+    def __init__(self, gdp_client, topic_name, message_type,
+                local_ip, local_gdpname, switch_ip):
         """Constructor for _Publisher.
         Args:
             rosbridge (ROSBridgeClient): The ROSBridgeClient object.
@@ -135,11 +153,18 @@ class _Publisher(object):
         self._topic_name = topic_name
         self._usage = 1
 
-        self._gdp_client.send(json.dumps({
-            'op': 'advertise',
-            'topic': topic_name,
-            'type': message_type,
-        }))
+        self.local_ip = local_ip 
+        self.local_gdpname = local_gdpname
+        self.switch_ip = switch_ip 
+
+        # self._gdp_client.send(json.dumps({
+        #     'op': 'advertise',
+        #     'topic': topic_name,
+        #     'type': message_type,
+        # }))
+
+        # publish on gdp
+        self.topic_gdpname_int = advertise_topic_to_gdp(topic_name, True, local_ip, local_gdpname, switch_ip)
 
     @property
     def usage(self):
@@ -154,11 +179,18 @@ class _Publisher(object):
         Args:
             message (dict): A message to send.
         """
-        self._gdp_client.send(json.dumps({
+        message = json.dumps({
             'op': 'publish',
             'topic': self._topic_name,
             'msg': message
-        }))
+        })
+        push_message_to_remote_topic("helloworld", 
+                hex(self.topic_gdpname_int)[2:], 
+                self.local_ip, self.local_gdpname, 
+                self.switch_ip, message)
+
+        # be able to send over to socket
+        # self._gdp_client.send(message)
 
     def unregister(self):
         """Reduce the usage of the publisher. If the usage is 0,
@@ -214,7 +246,7 @@ class GDP_Proxy(Node):
 
     def initialize(self):
         # connect to GDP infrastructure
-        self.client = GDP_Client(self)
+        self.client = GDP_Client(self, ip_switch_publisher, name_switch_publisher)
         
         # connect the topics 
         self._instances = {'topics': []}

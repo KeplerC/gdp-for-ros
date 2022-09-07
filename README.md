@@ -9,11 +9,14 @@ and create a local ROS workspace.
 mkdir -p ~/fog_ws/src
 cd ~/fog_ws/src
 git clone git@github.com:KeplerC/gdp-for-ros.git
+cd ../
+colcon build
+source install/setup.bash
 ```
 
 Install pythons depenencies by
 ```
-pip3 install PyDispatcher 
+pip3 install PyDispatcher scapy
 ```
 
 ### To run 
@@ -48,7 +51,7 @@ The talker publishes to the topic named `topic` and the listener subscribes to `
 
 Then run
 ```
-`ros2 run gdp_proxy_for_ros proxy
+ros2 run gdp_proxy_for_ros proxy
 ```
 that bridges the `topic` and `gdp/topic` together. The messages in `topic` are serialized and propaged through `fake_gdp_infrastructure.py` implemented by zmq. (TODO:Jiachen, replace with the real router). 
 
