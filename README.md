@@ -2,12 +2,19 @@
 
 
 ### Setup Env
-Install ROS2 properly and create a local ROS workspace. 
+Install ROS2 properly by [link](
+https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html)
+and create a local ROS workspace.
+```
+mkdir -p ~/fog_ws/src
+cd ~/fog_ws/src
+git clone git@github.com:KeplerC/gdp-for-ros.git
+```
+
 Install pythons depenencies by
 ```
 pip3 install PyDispatcher 
 ```
-A working repo is  hosted at `gdpmobile1/fog_ws/src/`.
 
 ### To run 
 
