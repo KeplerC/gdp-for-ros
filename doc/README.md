@@ -30,7 +30,15 @@ This demo needs 5 NUCs: gdpmobile2-6. gdpmobile5 as a publisher, gdpmobile6 as a
         ```
 2. The above step generates the gdpname for each switch. Update the `~/fog_ws/src/gdp_proxy_for_ros/proxy.py` L16-20 with the corresponding generated gdpnames. 
 
-    Then Register a proxy that only has a publisher. On gdpmobile5 and 6, run
+    Then Register a proxy that only has a publisher. On gdpmobile5, run
+    ```
+    cd fog_ws
+    sudo su
+    source ./install/setup.bash
+    colcon build                        # to build the ROS package 
+    ros2 run gdp_proxy_for_ros proxy    # to run the proxy
+    ```
+    this will generate a gdp name for the topic. Update the topic on gdpmobile6's  `~/fog_ws/src/gdp_proxy_for_ros/proxy.py` L21. then run
     ```
     cd fog_ws
     sudo su
