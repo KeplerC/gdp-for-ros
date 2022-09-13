@@ -28,29 +28,30 @@ This demo needs 5 NUCs: gdpmobile2-6. gdpmobile5 as a publisher, gdpmobile6 as a
         cd gdp/jiachen_playground
         cargo run -- -m 0 -a 128.32.37.41
         ```
-2. Register a proxy that only has a publisher, and advertise a topic called "helloworld". On gdpmobile5, run
-    ```
-    cd gdp-router-client-proxy/
-    . venv/bin/activate
-    ```
-    and then, using the gdpname showed on gdpmobile2 (IP address is 128.32.37.82),
-    ```
-    sudo env "PATH=$PATH" python gdp_for_ros.py 128.32.37.82 [gdpname of gdpmobile2] 1 123123123
-    ```
+2. The above step generates the gdpname for each switch. Update the `~/fog_ws/src/gdp_proxy_for_ros/proxy.py` L16-20 with the corresponding generated gdpnames. 
 
-3. Register a proxy that only has a subscriber, and connect itself as a subscriber to the topic "helloworld". On gdpmobile6, run
+    Then Register a proxy that only has a publisher. On gdpmobile5 and 6, run
     ```
-    cd gdp-router-client-proxy/
-    . venv/bin/activate
+    cd fog_ws
+    sudo su
+    source ./install/setup.bash
+    colcon build                        # to build the ROS package 
+    ros2 run gdp_proxy_for_ros proxy    # to run the proxy
     ```
-    and then, using the gdpname of gdpmobile4 and the gdpname
-    of the topic "helloworld" (this should show on the gdpmobile5 terminal starting with "0x" prefix, remember not to include this hex prefix), run
+    
+3. Run ROS application. Start two new terminals, on the terminal with gdpmobile 5, run the talker by
     ```
-    sudo env "PATH=$PATH" python gdp_for_ros.py 128.32.37.42 [gdpname of gdpmobile4] 0 [gdpname of "helloworld" topic]
+    cd ~/fog_ws/
+    source ./install/setup.sh
+    ros2 run gdp_proxy_for_ros talker
     ```
-    By ths time, gdpmobile3 tab should show that there is a topic called "helloworld" in the GDP, and this topic has one publisher and one subscriber
-
-4. Push a message to topic "helloworld", just hit any key on gdpmobile5
-
-
+    
+    and run the listener on gdpmobile 6 by
+        ```
+    cd ~/fog_ws/
+    source ./install/setup.sh
+    ros2 topic list
+    ros2 topic echo /gdp/topic
+    ```
+    
 
