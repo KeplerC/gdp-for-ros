@@ -47,7 +47,7 @@ This demo needs 5 NUCs: gdpmobile2-6. gdpmobile5 as a publisher, gdpmobile6 as a
     ```
     
     and run the listener on gdpmobile 6 by
-        ```
+    ```
     cd ~/fog_ws/
     source ./install/setup.sh
     ros2 topic list
