@@ -10,13 +10,18 @@ class MinimalSubscriber(Node):
         super().__init__('minimal_subscriber')
         self.subscription = self.create_subscription(
             String,
-            'gdp/topic',
+            '/gdp/benchmark',
             self.listener_callback,
             10)
+        self.publisher_ = self.create_publisher(String, 'benchmark_echo', 10)
         self.subscription  # prevent unused variable warning
 
     def listener_callback(self, msg):
-        self.get_logger().info('I heard: "%s"' % msg.data)
+        echo_msg = String()
+        echo_msg.data = msg.data[:40]
+        self.get_logger().info('I heard: "%s"' % echo_msg.data[:40])
+        self.publisher_.publish(echo_msg)
+
 
 
 def main(args=None):

@@ -14,9 +14,9 @@ from .utils import *
 # hardcode several things 
 # TODO: change it with cli args
 ip_switch_publisher = '128.32.37.82'
-name_switch_publisher =  '2477729b0898c9c7e3e4bc25fea33b1d7a9c4daf790c956382a4a571d7aba16d'
+name_switch_publisher =  '6a05e6bdea269251e0d1ca5c7ea8a4db0628b646d3805af0ce019935352aad05'
 ip_switch_subscriber = '128.32.37.42'
-name_switch_subscriber= '626e82ab70487001f88dc63f5189c9a1af71a575f084f8621d55538778ed33b4'
+name_switch_subscriber= 'b84afdeafbbe4591c5d8e00d5123f45f86d6fb4f31e4805b0ecbe326207f3dcd'
 talker_topic_gdp_name = 'adb75a57eb2ed7662255e35fac11ad06febeec4ceced55a7cd2de8e043026e7c'
 
 class GDP_Client():
@@ -240,8 +240,8 @@ class GDP_Proxy(Node):
         super().__init__('gdp_proxy')
 
         # topics
-        self.remote_topics =[]
-        self.local_topics = [["topic", 'std_msgs/String']]
+        self.remote_topics =[["benchmark_echo", 'std_msgs/String']]
+        self.local_topics = [["benchmark", 'std_msgs/String']]
         self.rate_hz = 1
         self.check_if_msgs_are_installed()
 
