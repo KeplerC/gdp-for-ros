@@ -3,7 +3,7 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from time import time 
 
-def payload_generator(id, size = 10000000):
+def payload_generator(id, size = 1):
     return str(id) + "," + str(time()) + "," + "1" * size
 
 def payload_to_latency(payload):

@@ -20,14 +20,13 @@ def get_local_ip():
 
 
 
-def generate_gdpname(string):
+def generate_gdpname(input):
     '''
-    Generate a 256 bit GDPName for current machine based on current time and ip address,
-    and print out the hex representation and return the integer representation
+    Generate a 256 bit GDPName
     '''
-    curr_time = datetime.now()
-    string_to_hash = str(curr_time) + str(string)
-    GdpName = hashlib.sha256(string_to_hash.encode('utf-8'))
+    # curr_time = datetime.now()
+    # string_to_hash = str(curr_time) + str(string)
+    GdpName = hashlib.sha256(input.encode('utf-8'))
     # We need human-readable hex string for GdpName instead of bytes for display purpose
     local_gdp_name_hex = GdpName.hexdigest()
     print(local_gdp_name_hex)
