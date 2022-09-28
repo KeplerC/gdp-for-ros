@@ -126,7 +126,7 @@ def register_proxy(local_ip, switch_ip, local_GdpName, dst_GdpName):
 
 
 
-def advertise_topic_to_gdp(topic_name, is_by_pub, local_ip, local_gdpname, switch_ip):
+def sync_rt_info(topic_name, topic_metadata, is_by_pub, local_ip, local_gdpname, switch_ip):
     '''
     Advertise a topic to gdp. If it is called by a publisher, also register current gdp_client as topic publisher. 
     Otherwise, register as subscriber 
@@ -134,7 +134,7 @@ def advertise_topic_to_gdp(topic_name, is_by_pub, local_ip, local_gdpname, switc
     Returns an integer representation of this topic's gdpname. Shared by the entire GDP
     '''
     print("The following is generated gdpname for topic={}".format(topic_name))
-    topic_gdpname = generate_gdpname(topic_name + local_ip)
+    topic_gdpname = generate_gdpname(topic_name+topic_metadata)
     
     
     payload = json.dumps(
@@ -150,7 +150,9 @@ def advertise_topic_to_gdp(topic_name, is_by_pub, local_ip, local_gdpname, switc
                     UDP(sport=31415, dport=31415)/ \
                         GDP(data_len=len(payload), src_gdpname=local_gdpname, dst_gdpname=0, action=5,uuid=0, packet_no=1, num_packets=1 )/\
                              payload
+    
     sendp(packet)
+    
     return topic_gdpname
 
 
@@ -271,7 +273,7 @@ if __name__ == "__main__":
     register_proxy(local_ip, switch_ip, local_gdpname, switch_gdpname)
 
     if args.is_pub == '1':
-        topic_gdpname_int = advertise_topic_to_gdp("helloworld", True, local_ip, local_gdpname, switch_ip)
+        topic_gdpname_int = sync_rt_info("helloworld", True, local_ip, local_gdpname, switch_ip)
         print("This topic of helloworld has a gdpname = " + hex(topic_gdpname_int))
         listen_keyboard(on_press=lambda key: push_message_to_remote_topic("helloworld", hex(topic_gdpname_int)[2:], local_ip, local_gdpname, switch_ip, "Greetings, subscribers!"))
         

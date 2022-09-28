@@ -14,10 +14,10 @@ from .utils import *
 # hardcode several things 
 # TODO: change it with cli args
 ip_switch_publisher = '128.32.37.82'
-name_switch_publisher =  '6a05e6bdea269251e0d1ca5c7ea8a4db0628b646d3805af0ce019935352aad05'
+name_switch_publisher =  '3d621df9f8cbf8905a41df8935288da89e5291d30074cc7000a958f9752d224a'
 ip_switch_subscriber = '128.32.37.42'
-name_switch_subscriber= 'b84afdeafbbe4591c5d8e00d5123f45f86d6fb4f31e4805b0ecbe326207f3dcd'
-talker_topic_gdp_name = 'adb75a57eb2ed7662255e35fac11ad06febeec4ceced55a7cd2de8e043026e7c'
+name_switch_subscriber= '5120e3d3d5268d0344be13341832282564fc73392ca9db78c036601bdaf09815'
+# talker_topic_gdp_name = 'adb75a57eb2ed7662255e35fac11ad06febeec4ceced55a7cd2de8e043026e7c'
 
 class GDP_Client():
     def __init__(self, gdp_proxy, switch_ip, switch_name):
@@ -40,13 +40,13 @@ class GDP_Client():
         thread = threading.Thread(target=start_sniffing, args=(lambda packet: self.data_assembler.process_packet(packet),))
         thread.start()
         
-    def publisher(self, topic_name, message_type):
+    def publisher(self, topic_name, message_type, metadata):
         if topic_name in self._publishers:
             publisher = self._publishers.get(topic_name)
             publisher.usage += 1
         else:
             print('Advertising topic {} for publishing'.format(topic_name))
-            publisher = _Publisher(self, topic_name, message_type, 
+            publisher = _Publisher(self, topic_name, metadata, message_type, 
                             self.local_ip, self.local_gdpname, self.switch_ip)
             self._publishers[topic_name] = publisher
 
@@ -61,7 +61,7 @@ class GDP_Client():
             print('Stop advertising topic {} for publishing'.format(topic_name))
             del self._publishers[topic_name]
             
-    def subscriber(self, topic_name, message_type, cb):
+    def subscriber(self, topic_name, topic_metadata, message_type, cb):
         subscriber = _Subscriber(self, topic_name, cb)
         if topic_name in self._subscribers:
             self._subscribers.get(topic_name).get(
@@ -77,7 +77,8 @@ class GDP_Client():
             self._subscribers[topic_name]['subscribers'] = [subscriber]
 
             # register with gdp
-            connect_self_to_topic(talker_topic_gdp_name, False, self.local_ip, self.local_gdpname, self.switch_ip)
+            sync_rt_info(topic_name, topic_metadata, False, self.local_ip, self.local_gdpname, self.switch_ip)
+            # connect_self_to_topic(talker_topic_gdp_name, False, self.local_ip, self.local_gdpname, self.switch_ip)
         
         return subscriber
 
@@ -142,7 +143,7 @@ class GDP_Client():
 
 
 class _Publisher(object):
-    def __init__(self, gdp_client, topic_name, message_type,
+    def __init__(self, gdp_client, topic_name, topic_metadata, message_type,
                 local_ip, local_gdpname, switch_ip):
         """Constructor for _Publisher.
         Args:
@@ -167,7 +168,7 @@ class _Publisher(object):
         # }))
 
         # publish on gdp
-        self.topic_gdpname_int = advertise_topic_to_gdp(topic_name, True, local_ip, local_gdpname, switch_ip)
+        self.topic_gdpname_int = sync_rt_info(topic_name, topic_metadata, True, local_ip, local_gdpname, switch_ip)
 
     @property
     def usage(self):
@@ -240,8 +241,10 @@ class GDP_Proxy(Node):
         super().__init__('gdp_proxy')
 
         # topics
-        self.remote_topics =[["benchmark_echo", 'std_msgs/String']]
+        self.remote_topics = [["benchmark_echo", 'std_msgs/String']]
         self.local_topics = [["benchmark", 'std_msgs/String']]
+        self.remote_topics_metadata = {"benchmark_echo":"Author:YYY,Domain:1,Date:XXX"} #["Author:AAA,Domain:1,Date:XXX"]
+        self.local_topics_metadata = {"benchmark":"Author:AAA,Domain:1,Date:XXX"}
         self.rate_hz = 1
         self.check_if_msgs_are_installed()
 
@@ -253,24 +256,25 @@ class GDP_Proxy(Node):
         
         # connect the topics 
         self._instances = {'topics': []}
-        for rt in self.remote_topics:
-            if len(rt) == 2:
-                topic_name, topic_type = rt
-                local_name = topic_name
-            elif len(rt) == 3:
-                topic_name, topic_type, local_name = rt
-            self.create_new_remote_topic(topic_name, topic_type, local_name)
-
         for lt in self.local_topics:
             if len(lt) == 2:
                 topic_name, topic_type = lt
                 remote_name = topic_name
             elif len(lt) == 3:
                 topic_name, topic_type, remote_name = lt
-            self.create_new_local_topic(topic_name, topic_type, remote_name)
+            self.create_new_local_topic(topic_name, self.local_topics_metadata[topic_name], topic_type, remote_name)
+
+        for rt in self.remote_topics:
+            if len(rt) == 2:
+                topic_name, topic_type = rt
+                local_name = topic_name
+            elif len(rt) == 3:
+                topic_name, topic_type, local_name = rt
+            self.create_new_remote_topic(topic_name, self.remote_topics_metadata[topic_name], topic_type, local_name)
+
 
     # Topics being published remotely to expose locally
-    def create_new_remote_topic(self, topic_name, topic_type, local_name=""):
+    def create_new_remote_topic(self, topic_name, topic_metadata, topic_type, local_name=""):
         if local_name == "":
             local_name = topic_name
         print("create new remote topic to expose locally: ", topic_name, " ", topic_type)
@@ -282,6 +286,7 @@ class GDP_Proxy(Node):
                                                                   rospub)
         bridgesub = self.client.subscriber(
                                 topic_name,
+                                topic_metadata,
                                 topic_type,
                                 cb_r_to_l)
 
@@ -292,11 +297,11 @@ class GDP_Proxy(Node):
                  })
         
     # Topics being published locally to expose remotely
-    def create_new_local_topic(self, topic_name, topic_type, remote_name=""):
+    def create_new_local_topic(self, topic_name, topic_metadata, topic_type, remote_name=""):
         if remote_name == "":
             remote_name = topic_name
         print("create new local topic to expose remote: ", topic_name, " ", topic_type)
-        bridgepub = self.client.publisher(remote_name, topic_type)
+        bridgepub = self.client.publisher(remote_name, topic_type, topic_metadata)
 
         cb_l_to_r = self.create_callback_from_local_to_remote(topic_name,
                                                             topic_type,
