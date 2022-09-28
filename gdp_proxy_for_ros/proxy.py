@@ -13,11 +13,6 @@ from .utils import *
 
 # hardcode several things 
 # TODO: change it with cli args
-ip_switch_publisher = '128.32.37.82'
-name_switch_publisher =  '3d621df9f8cbf8905a41df8935288da89e5291d30074cc7000a958f9752d224a'
-ip_switch_subscriber = '128.32.37.42'
-name_switch_subscriber= '5120e3d3d5268d0344be13341832282564fc73392ca9db78c036601bdaf09815'
-# talker_topic_gdp_name = 'adb75a57eb2ed7662255e35fac11ad06febeec4ceced55a7cd2de8e043026e7c'
 
 class GDP_Client():
     def __init__(self, gdp_proxy, switch_ip, switch_name):
@@ -237,22 +232,46 @@ class _Subscriber(object):
         self._gdp_client.unsubscribe(self)
         
 class GDP_Proxy(Node):
-    def __init__(self):
+    def __init__(self, config_file_path = "./src/gdp-for-ros/config.json"):
         super().__init__('gdp_proxy')
 
         # topics
-        self.remote_topics = [["benchmark_echo", 'std_msgs/String']]
-        self.local_topics = [["benchmark", 'std_msgs/String']]
-        self.remote_topics_metadata = {"benchmark_echo":"Author:YYY,Domain:1,Date:XXX"} #["Author:AAA,Domain:1,Date:XXX"]
-        self.local_topics_metadata = {"benchmark":"Author:AAA,Domain:1,Date:XXX"}
+        self.read_in_config(config_file_path)
         self.rate_hz = 1
         self.check_if_msgs_are_installed()
 
         self.initialize()
 
+    def read_in_config(self, config_file_path):
+        with open(config_file_path, "r") as f:
+            config_str = f.read()
+        config = json.loads(config_str)
+        self.ip_switch_publisher = config["switch_ip"]
+        self.name_switch_publisher =  config["switch_gdpname"]
+        self.local_topics = []
+        self.remote_topics = []
+        self.remote_topics_metadata = {}
+        self.local_topics_metadata = {}
+        
+        topics = config["topics"]#json.loads(config["topics"])
+        for topic in topics:
+            print(topic)
+            topic_name = topic
+            topic_info = topics[topic_name]
+            if topic_info["type"] == "local":
+                self.local_topics.append([topic_name, topic_info["message_type"]])
+                self.local_topics_metadata[topic_name] = topic_info["metadata"]
+            elif topic_info["type"] == "remote":
+                self.remote_topics.append([topic_name, topic_info["message_type"]])
+                self.remote_topics_metadata[topic_name] = topic_info["metadata"]
+            else:
+                print("topic type unknown: ", topic_info["type"])
+
+        print(self.local_topics, self.remote_topics,self.remote_topics_metadata, self.local_topics_metadata )
+            
     def initialize(self):
         # connect to GDP infrastructure
-        self.client = GDP_Client(self, ip_switch_publisher, name_switch_publisher)
+        self.client = GDP_Client(self, self.ip_switch_publisher, self.name_switch_publisher)
         
         # connect the topics 
         self._instances = {'topics': []}

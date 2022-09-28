@@ -1,0 +1,16 @@
+{
+  "switch_ip": "128.32.37.82",
+  "switch_gdpname": "3d621df9f8cbf8905a41df8935288da89e5291d30074cc7000a958f9752d224a",
+  "topics": {
+    "benchmark": {
+      "message_type": "std_msgs/String", 
+      "metadata": "Author:YYY,Domain:1,Date:XXX", 
+      "type": "local"
+    }, 
+    "benchmark_echo": {
+      "message_type": "std_msgs/String", 
+      "metadata": "Author:XXXX,Domain:1,Date:XXX", 
+      "type": "remote"
+    }
+  }
+}
