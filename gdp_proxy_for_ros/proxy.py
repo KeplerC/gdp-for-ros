@@ -183,7 +183,7 @@ class _Publisher(object):
             'topic': self._topic_name,
             'msg': message
         })
-        push_message_to_remote_topic("helloworld", 
+        push_message_to_remote_topic(self._topic_name, 
                 hex(self.topic_gdpname_int)[2:], 
                 self.local_ip, self.local_gdpname, 
                 self.switch_ip, message)

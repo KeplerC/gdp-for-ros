@@ -1,6 +1,6 @@
 {
   "switch_ip": "128.32.37.82",
-  "switch_gdpname": "3d621df9f8cbf8905a41df8935288da89e5291d30074cc7000a958f9752d224a",
+    "switch_gdpname": "0cdc8fc111ffb949d615e4f1daf54cb4b2bfb49ce2b2659e912a610fbd57668d",
   "topics": {
     "benchmark": {
       "message_type": "std_msgs/String", 
