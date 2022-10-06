@@ -20,6 +20,7 @@ class MinimalSubscriber(Node):
         echo_msg = String()
         echo_msg.data = msg.data[:40]
         self.get_logger().info('I heard: "%s"' % echo_msg.data[:40])
+        print("gdp_for_ros.py, process pakcets, ", time.time(), "dispatcher sent")
         self.publisher_.publish(echo_msg)
 
 

@@ -45,7 +45,7 @@ def generate_uuid():
     uuid_obj = uuid4()
     uuid_bytes = uuid_obj.bytes
     uuid_int = int.from_bytes(uuid_bytes, 'big')
-    print("gaenerated uuid is {}".format(uuid_obj.hex))
+    # print("gaenerated uuid is {}".format(uuid_obj.hex))
     return uuid_int
 
 def gdpname_hex_to_int(gdpname_in_hex):

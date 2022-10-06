@@ -45,6 +45,7 @@ class DataAssembler():
         '''
         if not packet.haslayer(GDP):
             return
+        print("gdp_for_ros.py, process pakcets, ", time.time(), "at least gdp packet")
         ip_layer = packet.getlayer(IP)
         # Checking if packet ip destination is current client proxy
         if ip_layer.dst != self.local_ip or ip_layer.src != self.switch_ip:
@@ -66,6 +67,8 @@ class DataAssembler():
 
         # Critical section below, using a python mutex
         # DATA_ASSEMBLER_MUTEX.acquire()
+
+        print("gdp_for_ros.py, process pakcets, ", time.time(), "finish desecting")
 
         if series_uuid in self.series_packets.keys():
             data_list = self.series_packets[series_uuid]
@@ -90,13 +93,14 @@ class DataAssembler():
             self.series_packets_countdown.pop(series_uuid)
 
         print("Received message: ", message)
+        print("gdp_for_ros.py, process pakcets, ", time.time(), "finish assembling")
         message = json.loads(message).get("message")
         data = json.loads(message)
         if data.get("op") == "publish":
             dispatcher.send(signal=data.get('topic'), message=data.get('msg'))
         else:
             print("operation not supported ", data.get("op"))    
-        
+        print("gdp_for_ros.py, process pakcets, ", time.time(), "dispatcher sent")
         # Releasing the mutex
         # DATA_ASSEMBLER_MUTEX.release()
 

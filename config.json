@@ -1,16 +1,16 @@
 {
-  "switch_ip": "128.32.37.82",
-    "switch_gdpname": "0cdc8fc111ffb949d615e4f1daf54cb4b2bfb49ce2b2659e912a610fbd57668d",
-  "topics": {
-    "benchmark": {
-      "message_type": "std_msgs/String", 
-      "metadata": "Author:YYY,Domain:1,Date:XXX", 
-      "type": "local"
-    }, 
-    "benchmark_echo": {
-      "message_type": "std_msgs/String", 
-      "metadata": "Author:XXXX,Domain:1,Date:XXX", 
-      "type": "remote"
-    }
+  "switch_ip": "128.32.37.42",
+  "switch_gdpname": "aed0ed390419120a7216d6f18bc94ad4975d6332c5610db787489c2a94b0a69a",
+"topics": {
+  "benchmark": {
+    "message_type": "std_msgs/String", 
+    "metadata": "Author:YYY,Domain:1,Date:XXX", 
+    "type": "remote"
+  }, 
+  "benchmark_echo": {
+    "message_type": "std_msgs/String", 
+    "metadata": "Author:XXXX,Domain:1,Date:XXX", 
+    "type": "local"
   }
+}
 }
