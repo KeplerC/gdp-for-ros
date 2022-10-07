@@ -4,9 +4,26 @@ from utils import *
 import time
 from multiprocessing import Process
 
+
+import socket
+ETH_P_ALL = 3
+interface = "eno1"
+ETH_FRAME_LEN = 1514
+
+s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ALL))
+s.bind((interface, 0))
+
 RECEIVER_IP = "128.32.37.40"  # gdpmobile6
 LOCAL_IP = get_local_ip()
 
+
+def send_raw(buf):
+    s.sendall(raw(buf))
+
+def sniff_raw(prn):
+    while True:
+        data = s.recv(ETH_FRAME_LEN)
+        prn(Ether(data))
 
 class GDP(Packet):
     name = "GDP"
@@ -27,7 +44,7 @@ bind_layers(UDP, GDP, dport=31415)
 
 
 def start_sniffing(for_each):
-    sniff(prn=for_each)
+    sniff_raw(prn=for_each)
 
 
 def packet_recv_timestamp(packet):
@@ -75,7 +92,7 @@ def sender_workload(num_packets):
     for i in range(1, num_packets+1):  # send dummy packets
         p = gen_packet(i)
         print("Sending packet {} at {}".format(p.load, time.time()))
-        sendp(p, verbose=False)
+        send_raw(p)
 
 
 def echo(packet):
@@ -83,11 +100,11 @@ def echo(packet):
         return
     ip_layer = packet.getlayer(IP)
     echo_packet = gen_echo(packet.load.decode(), ip_layer.src)
-    sendp(echo_packet, verbose=False)
+    send_raw(echo_packet)
 
 
 def receiver_workload():
-    sniff(prn=echo)
+    sniff_raw(prn=echo)
 
 
 def main():
@@ -95,6 +112,8 @@ def main():
         t = threading.Thread(target=start_sniffing, args=(
             lambda packet: packet_recv_timestamp(packet),))
         t.start()
+        import time 
+        time.sleep(1)
         num_packets = 50
         sender_workload(num_packets)
 
