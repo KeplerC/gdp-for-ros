@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 
 from std_msgs.msg import String
-
+import time
 
 class MinimalSubscriber(Node):
 
@@ -10,7 +10,7 @@ class MinimalSubscriber(Node):
         super().__init__('minimal_subscriber')
         self.subscription = self.create_subscription(
             String,
-            '/gdp/benchmark',
+            '/benchmark',
             self.listener_callback,
             10)
         self.publisher_ = self.create_publisher(String, 'benchmark_echo', 10)
@@ -26,6 +26,7 @@ class MinimalSubscriber(Node):
 
 
 def main(args=None):
+    
     rclpy.init(args=args)
 
     minimal_subscriber = MinimalSubscriber()
