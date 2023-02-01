@@ -17,7 +17,7 @@ class MinimalPublisher(Node):
         self.publisher_ = self.create_publisher(String, 'benchmark', 10)
         self.subscription = self.create_subscription(
             String,
-            '/gdp/benchmark_echo',
+            '/benchmark_echo',
             self.listener_callback,
             10)
         timer_period = 1  # seconds
