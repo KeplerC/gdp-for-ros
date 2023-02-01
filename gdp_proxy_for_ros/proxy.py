@@ -60,9 +60,9 @@ class ROSduct(Node):
 
         # Topics
         # TODO: check if topic types are installed, if not, give a warning
-        self.remote_topics = []
+        self.remote_topics = [['/chatter_1', 'std_msgs/String']]
         print("Remote topics: " + str(self.remote_topics))
-        self.local_topics = []
+        self.local_topics = [['/chatter', 'std_msgs/String']]
         print("Local topics: " + str(self.local_topics))
 
         self.parameters = []
@@ -75,72 +75,80 @@ class ROSduct(Node):
         Initialize creating all necessary bridged clients and servers.
         """
         connected = False
-        while not rospy.is_shutdown() and not connected:
+        while not connected:
             try:
                 self.client = ROSBridgeClient(
                     self.rosbridge_ip, self.rosbridge_port)
                 connected = True
             except socket.error as e:
-                rospy.logwarn(
+                print(
                     'Error when opening websocket, is ROSBridge running?')
-                rospy.logwarn(e)
-                rospy.sleep(5.0)
+                print(e)
 
         # We keep track of the instanced stuff in this dict
-        self._instances = {'topics': [],
-                           'services': []}
-        for r_t in self.remote_topics:
-            if len(r_t) == 2:
-                topic_name, topic_type = r_t
-                local_name = topic_name
-            elif len(r_t) == 3:
-                topic_name, topic_type, local_name = r_t
-            rospub = rospy.Publisher(local_name,
-                                     get_ROS_class(topic_type),
-                                     # SubscribeListener added later
-                                     queue_size=1)
+        self._instances = {'topics': []}
+        for lt in self.local_topics:
+            if len(lt) == 2:
+                topic_name, topic_type = lt
+                remote_name = topic_name
+            elif len(lt) == 3:
+                topic_name, topic_type, remote_name = lt
+            self.create_new_local_topic(topic_name, topic_type, remote_name)
 
-            cb_r_to_l = self.create_callback_from_remote_to_local(topic_name,
+        for rt in self.remote_topics:
+            if len(rt) == 2:
+                topic_name, topic_type = rt
+                local_name = topic_name
+            elif len(rt) == 3:
+                topic_name, topic_type, local_name = rt
+            self.create_new_remote_topic(topic_name, topic_type, local_name)
+
+
+    # Topics being published remotely to expose locally
+    def create_new_remote_topic(self, topic_name, topic_type, local_name=""):
+        if local_name == "":
+            local_name = topic_name
+        print("create new remote topic to expose locally: ", topic_name, " ", topic_type)
+
+        rospub = self.create_publisher(get_ROS_class(topic_type), local_name, 10)
+
+        cb_r_to_l = self.create_callback_from_remote_to_local(topic_name,
                                                                   topic_type,
                                                                   rospub)
-            subl = self.create_subscribe_listener(topic_name,
-                                                  topic_type,
-                                                  cb_r_to_l)
-            rospub.impl.add_subscriber_listener(subl)
-            self._instances['topics'].append(
+        bridgesub = self.client.subscriber(
+                                topic_name,
+                                topic_type,
+                                cb_r_to_l)
+
+        self._instances['topics'].append(
                 {topic_name:
                  {'rospub': rospub,
-                  'bridgesub': None}
+                  'bridgesub': bridgesub}
                  })
+        
+    # Topics being published locally to expose remotely
+    def create_new_local_topic(self, topic_name,  topic_type, remote_name=""):
+        if remote_name == "":
+            remote_name = topic_name
+        print("create new local topic to expose remote: ", topic_name, " ", topic_type)
+        bridgepub = self.client.publisher(remote_name, topic_type)
 
-        for l_t in self.local_topics:
-            if len(l_t) == 2:
-                topic_name, topic_type = l_t
-                remote_name = topic_name
-            elif len(l_t) == 3:
-                topic_name, topic_type, remote_name = l_t
+        cb_l_to_r = self.create_callback_from_local_to_remote(topic_name,
+                                                            topic_type,
+                                                            bridgepub)
 
-            bridgepub = self.client.publisher(remote_name, topic_type)
+        rossub = self.create_subscription(
+                        get_ROS_class(topic_type),
+                        topic_name,
+                        cb_l_to_r,
+                        10)
 
-            cb_l_to_r = self.create_callback_from_local_to_remote(topic_name,
-                                                                  topic_type,
-                                                                  bridgepub)
-
-            rossub = rospy.Subscriber(topic_name,
-                                      get_ROS_class(topic_type),
-                                      cb_l_to_r)
-            self._instances['topics'].append(
+        self._instances['topics'].append(
                 {topic_name:
                  {'rossub': rossub,
                   'bridgepub': bridgepub}
                  })
 
-        # Get all params and store them for further updates
-        for param in self.parameters:
-            if type(param) == list:
-                # remote param name is the first one
-                param = param[0]
-            self.last_params[param] = self.client.get_param(param)
 
     def create_callback_from_remote_to_local(self, topic_name,
                                              topic_type,
@@ -148,14 +156,14 @@ class ROSduct(Node):
         # Note: argument MUST be named 'message' as
         # that's the keyword given to pydispatch
         def callback_remote_to_local(message):
-            rospy.logdebug("Remote ROSBridge subscriber from topic " +
+            print("Remote ROSBridge subscriber from topic " +
                            topic_name + ' of type ' +
                            topic_type + ' got data: ' + str(message) +
                            ' which is republished locally.')
             # Only convert and publish with subscribers
-            if rospub.get_num_connections() >= 1:
-                msg = from_dict_to_ROS(message, topic_type)
-                rospub.publish(msg)
+
+            msg = from_dict_to_ROS(message, topic_type)
+            rospub.publish(msg)
         return callback_remote_to_local
 
     def create_callback_from_local_to_remote(self,
@@ -163,7 +171,7 @@ class ROSduct(Node):
                                              topic_type,
                                              bridgepub):
         def callback_local_to_remote(message):
-            rospy.logdebug("Local subscriber from topic " +
+            print("Local subscriber from topic " +
                            topic_name + ' of type ' +
                            topic_type + ' got data: ' + str(message) +
                            ' which is republished remotely.')
@@ -186,7 +194,7 @@ class ROSduct(Node):
             def peer_subscribe(this, tn, tp, pp):
                 # Only make a new subscriber if there wasn't one
                 if this.bridgesub is None:
-                    rospy.logdebug(
+                    print(
                         "We have a first subscriber to: " + topic_name)
                     this.bridgesub = self.client.subscriber(
                         topic_name,
@@ -200,7 +208,7 @@ class ROSduct(Node):
             def peer_unsubscribe(this, tn, num_peers):
                 # Unsubscribe if there isnt anyone left
                 if num_peers < 1:
-                    rospy.logdebug(
+                    print(
                         "There are no more subscribers to: " + topic_name)
                     self.client.unsubscribe(this.bridgesub)
                     this.bridgesub = None
