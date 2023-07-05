@@ -1,8 +1,7 @@
 ### Important Note
 
-It's still a proof of concept implementation that is not planned to be used by anyone. A few links that might be helpful: 
-* [Our rust GDP router] (https://github.com/JiachenYuan/gdp-router)
-* [Our Workshop arxiv] (https://arxiv.org/abs/2210.11691)
+Our full conference paper has been accepted by IROS 2023. Please refer to [arxiv](https://arxiv.org/abs/2306.17157) for more details. This repo was earlier attempt to implement SGC, but we realize the performance overhead of Python is too large, so we use a full rust implementation, please refer to [repo](https://github.com/data-capsule/fogros2-sgc/tree/main). This repo is then archived for good. 
+
 
 
 
